@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Finanzas</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN para el gráfico -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Cargar SheetJS (Librería ligera para generar archivos .xlsx verdaderos) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- SweetAlert2 para modales y alertas estilizadas -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header del Dashboard -->
+        <header class="dash-header">
+            <h1><i class="fa-solid fa-wallet"></i> Control de <span>Finanzas</span></h1>
+            <div class="currency-selector-container">
+    <label for="global-currency"><i class="fa-solid fa-coins"></i> Moneda Visualización:</label>
+    <select id="global-currency" class="input-select">
+        <option value="USD">USD ($)</option>
+        <option value="ARS" selected>ARS ($)</option>
+        <option value="EUR">EUR (€)</option>
+    </select>
+</div>
+        </header>
+
+        <!-- Tarjetas de Resumen -->
+        <section class="summary-cards">
+            <div class="card balance">
+                <p>Balance Total</p>
+                <h2 id="total-balance">$0.00</h2>
+            </div>
+            <div class="card income">
+                <p><i class="fa-solid fa-arrow-down"></i> Ingresos</p>
+                <h2 id="total-income">$0.00</h2>
+            </div>
+            <div class="card expense">
+                <p><i class="fa-solid fa-arrow-up"></i> Gastos</p>
+                <h2 id="total-expense">$0.00</h2>
+            </div>
+        </section>
+
+        <!-- Contenido Principal: Formulario, Gráfico e Historial -->
+        <div class="main-grid">
+            
+            <!-- Formulario de Nuevo Movimiento -->
+            <section class="panel form-panel">
+                
+                <h3><i class="fa-solid fa-plus-circle"></i> Nuevo Movimiento</h3>
+                <form id="transaction-form">
+                    <!-- NUEVO: Campo de Fecha -->
+                    <div class="form-group">
+                        <label for="date">Fecha</label>
+                        <input type="date" id="date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="currency">Moneda</label>
+                        <select id="currency" required>
+                            <option value="USD">USD ($)</option>
+                            <option value="ARS" selected>ARS ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Descripción</label>
+                        <input type="text" id="description" placeholder="Ej: Sueldo, Supermercado..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="amount">Monto ($)</label>
+                        <input type="number" id="amount" step="0.01" placeholder="0.00" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="type">Tipo</label>
+                            <select id="type" required>
+                                <option value="income">Ingreso</option>
+                                <option value="expense">Gasto</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="category">Categoría</label>
+                            <select id="category" required>
+                                <option value="Trabajo">Trabajo</option>
+                                <option value="Alquiler">Alquiler</option>
+                                <option value="Tarjetas">Tarjetas</option>
+                                <option value="Supermercado">Supermercado</option>
+                                <option value="Carniceria">Carniceria</option>
+                                <option value="Verduleria">Verduleria</option>
+                                <option value="Servicios">Servicios</option>
+                                <option value="Ocio">Ocio</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-add">Agregar Transacción</button>
+                </form>
+            </section>
+
+            
+
+            <!-- Panel del Gráfico -->
+            <section class="panel chart-panel">
+                <h3><i class="fa-solid fa-chart-pie"></i> Gastos por Categoría</h3>
+                <div class="chart-container">
+                    <canvas id="expense-chart"></canvas>
+                </div>
+            </section>
+
+            
+
+            <!-- Filtro de Período / Fechas -->
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label for="period-filter"><i class="fa-solid fa-calendar-days"></i> Período:</label>
+            <select id="period-filter" class="input-select">
+                <option value="all">Todo el historial</option>
+                <option value="this-month" selected>Este mes</option>
+                <option value="last-month">Mes pasado</option>
+                <option value="custom">Rango personalizado...</option>
+        </select>
+    </div>
+
+    <!-- Fechas Personalizadas (Ocultas por defecto) -->
+    <div id="custom-date-container" class="filter-group custom-dates" style="display: none;">
+        <input type="date" id="filter-start-date">
+        <span>hasta</span>
+        <input type="date" id="filter-end-date">
+    </div>
+</div>
+
+<!-- Panel de Presupuestos por Categoría -->
+<section class="panel budget-panel">
+    <div class="panel-header-actions">
+        <h3><i class="fa-solid fa-bullseye"></i> Presupuestos Mensuales</h3>
+        <button id="set-budget-btn" class="btn-secondary" type="button">
+            <i class="fa-solid fa-gear"></i> Configurar Límites
+        </button>
+    </div>
+
+    <!-- Lista de Barras de Progreso por Categoría -->
+    <div id="budget-list" class="budget-list">
+        <!-- Se genera dinámicamente desde JS -->
+    </div>
+</section>
+
+            <section class="panel history-panel">
+    <div class="panel-header-actions">
+        <h3><i class="fa-solid fa-list-check"></i> Movimientos por Día</h3>
+        <!-- Botón Exportar a Excel -->
+        <button id="export-excel-btn" class="btn-secondary" type="button">
+            <i class="fa-solid fa-file-excel"></i> Exportar a Excel
+        </button>
+    </div>
+    <div id="grouped-transaction-list" class="grouped-list"></div>
+</section>
+
+            
+
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
