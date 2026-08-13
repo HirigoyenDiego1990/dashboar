@@ -1,26 +1,8 @@
 /* ==========================================
    VARIABLES Y TEMAS (Paleta Sobria & Profesional)
    ========================================== */
-:root[data-theme="dark"] {
-    /* Fondos: Azul Noche / Carbón Profundo */
-    --bg-main: #0b0e14;
-    --bg-card: #151a23;
-    
-    /* Textos: Blanco Frío / Gris Pizarra */
-    --text-primary: #e2e8f0;
-    --text-secondary: #94a3b8;
-    
-    /* Acentos Principales: Azul Corporativo / Acero */
-    --accent-primary: #2563eb;       /* Azul Royal Sobrio */
-    --accent-primary-hover: #1d4ed8;
-    --border-color: #262f3e;          /* Borde sutil y fino */
-    
-    /* Indicadores Financieros */
-    --income-color: #10b981;         /* Verde Esmeralda Sobrio */
-    --expense-color: #ef4444;        /* Rojo Coral Claro */
-}
-
-:root[data-theme="light"] {
+/* --- ESTILOS PREDETERMINADOS (MODO CLARO) --- */
+:root {
     /* Fondos: Gris Platino / Blanco Puro */
     --bg-main: #f8fafc;
     --bg-card: #ffffff;
@@ -39,6 +21,25 @@
     --expense-color: #dc2626;        /* Rojo Carmesí */
 }
 
+/* --- ESTILOS CUANDO SE ACTIVA EL MODO OSCURO --- */
+:root[data-theme="dark"] {
+    /* Fondos: Azul Noche / Carbón Profundo */
+    --bg-main: #0b0e14;
+    --bg-card: #151a23;
+    
+    /* Textos: Blanco Frío / Gris Pizarra */
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    
+    /* Acentos Principales: Azul Corporativo / Acero */
+    --accent-primary: #2563eb;       /* Azul Royal Sobrio */
+    --accent-primary-hover: #1d4ed8;
+    --border-color: #262f3e;          /* Borde sutil y fino */
+    
+    /* Indicadores Financieros */
+    --income-color: #10b981;         /* Verde Esmeralda Sobrio */
+    --expense-color: #ef4444;        /* Rojo Coral Claro */
+}
 /* Base Styles */
 * {
     box-sizing: border-box;
@@ -48,35 +49,19 @@
 }
 
 body {
-    background-color: var(--bg-main);
-    color: var(--text-primary);
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 0;
+    width: 100%;
     min-height: 100vh;
-    padding: 2rem 1rem;
-    display: flex;
-    justify-content: center;
+    background-color: #0f172a; /* O el color de fondo oscuro que tengas */
 }
 
-/* Contenedor Principal */
 .dashboard-container {
     width: 100%;
-    max-width: 1100px;
-}
-
-/* Header */
-.dash-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.dash-header h1 {
-    font-size: 2rem;
-    font-weight: 600;
-    letter-spacing: -0.5px;
-}
-
-.dash-header h1 span {
-    color: var(--accent-primary);
+    max-width: 1200px; /* Asegura un ancho máximo adecuado */
+    margin: 0 auto;    /* Centra el contenedor en la pantalla */
+    padding: 1.5rem;
+    box-sizing: border-box;
 }
 
 /* ==========================================
@@ -128,8 +113,9 @@ body {
    ========================================== */
 .main-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
+    width: 100%;
 }
 
 .panel {
@@ -483,4 +469,229 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .budget-status-exceeded {
     background-color: #ef4444; /* Rojo ( > 100% ) */
+}
+
+/* ==========================================
+   NAVBAR PERSONALIZADO - TEMA OSCURO PREMIUM
+   ========================================== */
+
+.custom-navbar {
+    background-color: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-color, #334155);
+    padding: 0.8rem 1.5rem;
+    position: sticky;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
+/* Usamos una clase propia en lugar de colisionar con .container de Bootstrap */
+.custom-navbar-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.user-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Marca / Logo */
+.brand-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #f8fafc;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    letter-spacing: -0.3px;
+}
+
+.brand-icon {
+    color: #3b82f6;
+    font-size: 1.3rem;
+}
+
+/* Info del Usuario Logueado */
+.user-profile-badge {
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(15, 23, 42, 0.6);
+    padding: 0.35rem 0.8rem 0.35rem 0.4rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.user-avatar-img {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #3b82f6;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+.user-display-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+/* Botón de Logout */
+.btn-logout {
+    background-color: transparent;
+    color: #94a3b8;
+    border: 1px solid #334155;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-logout:hover {
+    background-color: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-logout:active {
+    transform: translateY(0);
+}
+
+/* Responsivo para celulares */
+@media (max-width: 576px) {
+    .custom-navbar {
+        padding: 0.6rem 1rem;
+    }
+    
+    .user-display-name {
+        display: none;
+    }
+    
+    .user-profile-badge {
+        padding: 0.2rem;
+        background: transparent;
+        border: none;
+    }
+}
+
+/* --- TARJETAS DE RESUMEN (GRID DE 4 COLUMNAS) --- */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.card p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.card h2 {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* Colores específicos de las tarjetas */
+.card.income h2 { color: var(--income-color); }
+.card.expense h2 { color: var(--expense-color); }
+.card.savings h2 { color: var(--savings-color); }
+
+/* --- ESTILOS DE LA SECCIÓN DE AHORROS --- */
+.savings-panel {
+    grid-column: span 1;
+}
+
+.savings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+
+.savings-item {
+    background-color: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.savings-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.savings-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.savings-title i {
+    color: var(--savings-color);
+}
+
+.savings-amount {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 10px;
+    background-color: var(--border-color);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--savings-color);
+    border-radius: 5px;
+    transition: width 0.4s ease;
+}
+
+.progress-percentage {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: right;
 }

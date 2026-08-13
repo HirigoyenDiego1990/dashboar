@@ -9,27 +9,55 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js CDN para el gráfico -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Cargar SheetJS (Librería ligera para generar archivos .xlsx verdaderos) -->
+    <!-- SheetJS (Librería para generar .xlsx) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- SweetAlert2 para modales y alertas estilizadas -->
+    <!-- SweetAlert2 para modales y alertas -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
+    <!-- NAVBAR CON PERFIL Y LOGOUT -->
+    <header class="custom-navbar">
+        <div class="custom-navbar-container">
+            <!-- Logo / Marca -->
+            <a class="brand-title" href="#">
+                <i class="fa-solid fa-wallet brand-icon"></i>
+                <span>Mis Finanzas</span>
+            </a>
+
+            <!-- Área de Usuario & Logout -->
+            <div class="user-actions">
+                <button id="btnThemeToggle" class="btn-theme-toggle" type="button" aria-label="Cambiar tema visual">
+                    <i id="themeIcon" class="fa-solid fa-moon"></i>
+                </button>
+
+                <div id="userInfo" class="user-profile-badge d-none d-flex">
+                    <img id="userAvatar" src="" alt="Avatar" class="user-avatar-img">
+                    <span id="userName" class="user-display-name"></span>
+                </div>
+
+                <button id="btnLogout" class="btn-logout" type="button" aria-label="Cerrar sesión">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Salir</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
     <div class="dashboard-container">
         <!-- Header del Dashboard -->
         <header class="dash-header">
             <h1><i class="fa-solid fa-wallet"></i> Control de <span>Finanzas</span></h1>
             <div class="currency-selector-container">
-    <label for="global-currency"><i class="fa-solid fa-coins"></i> Moneda Visualización:</label>
-    <select id="global-currency" class="input-select">
-        <option value="USD">USD ($)</option>
-        <option value="ARS" selected>ARS ($)</option>
-        <option value="EUR">EUR (€)</option>
-    </select>
-</div>
+                <label for="global-currency"><i class="fa-solid fa-coins"></i> Moneda Visualización:</label>
+                <select id="global-currency" class="input-select">
+                    <option value="USD">USD ($)</option>
+                    <option value="ARS" selected>ARS ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                </select>
+            </div>
         </header>
 
-        <!-- Tarjetas de Resumen -->
+        <!-- Tarjetas de Resumen (Incluye Ahorros) -->
         <section class="summary-cards">
             <div class="card balance">
                 <p>Balance Total</p>
@@ -43,17 +71,20 @@
                 <p><i class="fa-solid fa-arrow-up"></i> Gastos</p>
                 <h2 id="total-expense">$0.00</h2>
             </div>
+            <!-- NUEVO: Tarjeta de Ahorros Total -->
+            <div class="card savings">
+                <p><i class="fa-solid fa-piggy-bank"></i> Ahorros Totales</p>
+                <h2 id="total-savings">$0.00</h2>
+            </div>
         </section>
 
-        <!-- Contenido Principal: Formulario, Gráfico e Historial -->
+        <!-- Contenido Principal: Formulario, Gráfico, Presupuestos, Ahorros e Historial -->
         <div class="main-grid">
             
             <!-- Formulario de Nuevo Movimiento -->
             <section class="panel form-panel">
-                
                 <h3><i class="fa-solid fa-plus-circle"></i> Nuevo Movimiento</h3>
                 <form id="transaction-form">
-                    <!-- NUEVO: Campo de Fecha -->
                     <div class="form-group">
                         <label for="date">Fecha</label>
                         <input type="date" id="date" required>
@@ -70,7 +101,7 @@
 
                     <div class="form-group">
                         <label for="description">Descripción</label>
-                        <input type="text" id="description" placeholder="Ej: Sueldo, Supermercado..." required>
+                        <input type="text" id="description" placeholder="Ej: Sueldo, Supermercado, Ahorro..." required>
                     </div>
 
                     <div class="form-group">
@@ -81,9 +112,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="type">Tipo</label>
-                            <select id="type" required>
+                            <select id="type" class="form-select">
                                 <option value="income">Ingreso</option>
                                 <option value="expense">Gasto</option>
+                                <option value="ahorro">Ahorro</option>
+                                <option value="retiro_ahorro">Retirar Ahorro</option>
                             </select>
                         </div>
 
@@ -92,12 +125,16 @@
                             <select id="category" required>
                                 <option value="Trabajo">Trabajo</option>
                                 <option value="Alquiler">Alquiler</option>
-                                <option value="Tarjetas">Tarjetas</option>
                                 <option value="Supermercado">Supermercado</option>
                                 <option value="Carniceria">Carniceria</option>
                                 <option value="Verduleria">Verduleria</option>
                                 <option value="Servicios">Servicios</option>
+                                <option value="Deporte">Deporte</option>
+                                <option value="Viajes">Viajes</option>
+                                <option value="Mascota">Mascota</option>
+                                <option value="Tarjetas">Tarjetas</option>
                                 <option value="Ocio">Ocio</option>
+                                <option value="Ahorro">Ahorro</option>
                                 <option value="Otros">Otros</option>
                             </select>
                         </div>
@@ -107,8 +144,6 @@
                 </form>
             </section>
 
-            
-
             <!-- Panel del Gráfico -->
             <section class="panel chart-panel">
                 <h3><i class="fa-solid fa-chart-pie"></i> Gastos por Categoría</h3>
@@ -117,59 +152,80 @@
                 </div>
             </section>
 
-            
+            <!-- NUEVO: Panel de Fondo de Ahorros y Objetivos -->
+            <section class="panel savings-panel">
+                <div class="panel-header-actions">
+                    <h3><i class="fa-solid fa-piggy-bank"></i> Mis Objetivos de Ahorro</h3>
+                    <button id="add-savings-goal-btn" class="btn-secondary" type="button">
+                        <i class="fa-solid fa-plus"></i> Nuevo Objetivo
+                    </button>
+                </div>
 
-            <!-- Filtro de Período / Fechas -->
-    <div class="filter-bar">
-        <div class="filter-group">
-            <label for="period-filter"><i class="fa-solid fa-calendar-days"></i> Período:</label>
-            <select id="period-filter" class="input-select">
-                <option value="all">Todo el historial</option>
-                <option value="this-month" selected>Este mes</option>
-                <option value="last-month">Mes pasado</option>
-                <option value="custom">Rango personalizado...</option>
-        </select>
-    </div>
+                <div id="savings-list" class="savings-list">
+                    <!-- Ejemplo de Item de Ahorro (Se renderiza con JS) -->
+                    <div class="savings-item">
+                        <div class="savings-info">
+                            <div class="savings-title">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <span>Fondo de Emergencia</span>
+                            </div>
+                            <span class="savings-amount">$150,000 / $300,000</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: 50%;"></div>
+                        </div>
+                        <span class="progress-percentage">50% completado</span>
+                    </div>
+                </div>
+            </section>
 
-    <!-- Fechas Personalizadas (Ocultas por defecto) -->
-    <div id="custom-date-container" class="filter-group custom-dates" style="display: none;">
-        <input type="date" id="filter-start-date">
-        <span>hasta</span>
-        <input type="date" id="filter-end-date">
-    </div>
-</div>
-
-<!-- Panel de Presupuestos por Categoría -->
-<section class="panel budget-panel">
-    <div class="panel-header-actions">
-        <h3><i class="fa-solid fa-bullseye"></i> Presupuestos Mensuales</h3>
-        <button id="set-budget-btn" class="btn-secondary" type="button">
-            <i class="fa-solid fa-gear"></i> Configurar Límites
-        </button>
-    </div>
-
-    <!-- Lista de Barras de Progreso por Categoría -->
-    <div id="budget-list" class="budget-list">
-        <!-- Se genera dinámicamente desde JS -->
-    </div>
-</section>
-
+            <!-- Panel de Historial de Transacciones -->
             <section class="panel history-panel">
-    <div class="panel-header-actions">
-        <h3><i class="fa-solid fa-list-check"></i> Movimientos por Día</h3>
-        <!-- Botón Exportar a Excel -->
-        <button id="export-excel-btn" class="btn-secondary" type="button">
-            <i class="fa-solid fa-file-excel"></i> Exportar a Excel
-        </button>
-    </div>
-    <div id="grouped-transaction-list" class="grouped-list"></div>
-</section>
+                <div class="panel-header-actions">
+                    <h3><i class="fa-solid fa-list-check"></i> Movimientos por Día</h3>
+                    <button id="export-excel-btn" class="btn-secondary" type="button">
+                        <i class="fa-solid fa-file-excel"></i> Exportar a Excel
+                    </button>
+                </div>
 
-            
+                <div class="filter-bar" style="margin-top: 1rem; margin-bottom: 1rem;">
+                    <div class="filter-group">
+                        <label for="period-filter"><i class="fa-solid fa-calendar-days"></i> Período:</label>
+                        <select id="period-filter" class="input-select">
+                            <option value="all">Todo el historial</option>
+                            <option value="this-month" selected>Este mes</option>
+                            <option value="last-month">Mes pasado</option>
+                            <option value="custom">Rango personalizado...</option>
+                        </select>
+                    </div>
+
+                    <div id="custom-date-container" class="filter-group custom-dates" style="display: none;">
+                        <input type="date" id="filter-start-date">
+                        <span>hasta</span>
+                        <input type="date" id="filter-end-date">
+                    </div>
+                </div>
+
+                <div id="grouped-transaction-list" class="grouped-list"></div>
+            </section>
+
+            <!-- Panel de Presupuestos por Categoría -->
+            <section class="panel budget-panel">
+                <div class="panel-header-actions">
+                    <h3><i class="fa-solid fa-bullseye"></i> Presupuestos Mensuales</h3>
+                    <button id="set-budget-btn" class="btn-secondary" type="button">
+                        <i class="fa-solid fa-gear"></i> Configurar Límites
+                    </button>
+                </div>
+
+                <div id="budget-list" class="budget-list">
+                    <!-- Se genera dinámicamente desde JS -->
+                </div>
+            </section>
 
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
