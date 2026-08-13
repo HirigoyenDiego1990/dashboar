@@ -105,6 +105,12 @@ async function agregarMovimiento(description, amount, type, category, currency, 
     // Vuelve a leer Firestore para sincronizar el estado global
     await cargarDatos();
 
+    // 🔔 NUEVO: Si es un gasto, verificar si superó o se acerca al presupuesto
+    if (type === 'expense') {
+        const filteredTransactions = getFilteredTransactions();
+        verificarPresupuesto(category, filteredTransactions);
+    }
+
   } catch (error) {
     console.error("Error al guardar en Firestore:", error);
   }
@@ -1011,3 +1017,46 @@ window.eliminarObjetivo = async function(id) {
         }
     }
 };
+
+// --- VERIFICAR Y ALERTAR LÍMITES DE PRESUPUESTO ---
+function verificarPresupuesto(categoria, filteredTransactions) {
+    const limit = budgets[categoria] || 0;
+    if (limit <= 0) return; // Si no hay límite configurado, no hace nada
+
+    // Sumar todos los gastos de esa categoría en las transacciones filtradas actuales
+    const spent = filteredTransactions
+        .filter(t => t.type === 'expense' && t.category === categoria)
+        .reduce((acc, t) => acc + t.amount, 0);
+
+    const symbol = currencySymbols[currentCurrency] || '$';
+
+    if (spent > limit) {
+        Swal.fire({
+            icon: 'error',
+            title: '¡Presupuesto superado! 🚨',
+            text: `Has superado el límite para "${categoria}". Gastado: ${symbol}${formatNumber(spent)} de ${symbol}${formatNumber(limit)}`,
+            background: '#1e293b',
+            color: '#f8fafc',
+            confirmButtonColor: '#ef4444'
+        });
+    } else if (spent >= limit * 0.8) {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'warning',
+            title: `Cuidado: Te estás acercando al límite en "${categoria}" (${Math.round((spent/limit)*100)}%)`,
+            showConfirmButton: false,
+            timer: 4000,
+            background: '#1e293b',
+            color: '#f8fafc'
+        });
+    }
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(() => console.log('Service Worker registrado correctamente'))
+      .catch((err) => console.log('Error al registrar Service Worker:', err));
+  });
+}
