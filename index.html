@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Finanzas</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="shurtcut icon" href="/Img/finance_icon_192.png">
+    <link rel="icon" href="./Img/finance_icon_192.png">
     <!-- FontAwesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#1e293b">
     <!-- Chart.js CDN para el gráfico -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS (Librería para generar .xlsx) -->
@@ -16,7 +18,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <!-- NAVBAR CON PERFIL Y LOGOUT -->
+    <!-- Navegación local -->
     <header class="custom-navbar">
         <div class="custom-navbar-container">
             <!-- Logo / Marca -->
@@ -25,20 +27,10 @@
                 <span>Mis Finanzas</span>
             </a>
 
-            <!-- Área de Usuario & Logout -->
+            <!-- Controles visuales -->
             <div class="user-actions">
                 <button id="btnThemeToggle" class="btn-theme-toggle" type="button" aria-label="Cambiar tema visual">
                     <i id="themeIcon" class="fa-solid fa-moon"></i>
-                </button>
-
-                <div id="userInfo" class="user-profile-badge d-none d-flex">
-                    <img id="userAvatar" src="" alt="Avatar" class="user-avatar-img">
-                    <span id="userName" class="user-display-name"></span>
-                </div>
-
-                <button id="btnLogout" class="btn-logout" type="button" aria-label="Cerrar sesión">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    <span>Salir</span>
                 </button>
             </div>
         </div>
@@ -163,20 +155,7 @@
                 </div>
 
                 <div id="savings-list" class="savings-list">
-                    <!-- Ejemplo de Item de Ahorro (Se renderiza con JS) -->
-                    <div class="savings-item">
-                        <div class="savings-info">
-                            <div class="savings-title">
-                                <i class="fa-solid fa-shield-halved"></i>
-                                <span>Fondo de Emergencia</span>
-                            </div>
-                            <span class="savings-amount">$150,000 / $300,000</span>
-                        </div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: 50%;"></div>
-                        </div>
-                        <span class="progress-percentage">50% completado</span>
-                    </div>
+                    <!-- Se genera dinámicamente desde JS -->
                 </div>
             </section>
 
@@ -227,6 +206,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

@@ -1,128 +1,29 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  addDoc, 
-  doc,        // 👈 Necesario para referenciar el documento
-  updateDoc,  // 👈 Necesario para actualizar montos
-  deleteDoc,   // 👈 Necesario para eliminar objetivos
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+// Persistencia local: los datos permanecen únicamente en este navegador.
+const STORAGE_KEYS = {
+    transactions: 'misFinanzas.transactions',
+    budgets: 'misFinanzas.budgets',
+    savingsGoals: 'misFinanzas.savingsGoals'
+};
 
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyCX7pRLWvnUrK2txyTHk_ZFE_ujmVs4HiM",
-    authDomain: "finanzas-app-af367.firebaseapp.com",
-    projectId: "finanzas-app-af367",
-    storageBucket: "finanzas-app-af367.firebasestorage.app",
-    messagingSenderId: "592476181589",
-    appId: "1:592476181589:web:fe0180b384abd0a06bf0dc"
-  };
-
-  // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-let currentUser = null;
-
-// Elementos de la interfaz del usuario
-const userInfoContainer = document.getElementById("userInfo");
-const userAvatar = document.getElementById("userAvatar");
-const userName = document.getElementById("userName");
-const btnLogout = document.getElementById("btnLogout");
-
-// 🔒 GUARDIÁN DE SEGURIDAD & PERFIL DE USUARIO
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    // Si no está logueado, redirigir al login
-    window.location.href = "login.html";
-  } else {
-    currentUser = user;
-
-    // Mostrar avatar y nombre obtenido de Google Auth
-    if (userAvatar) userAvatar.src = user.photoURL || "https://via.placeholder.com/38";
-    if (userName) userName.textContent = user.displayName || user.email;
-    if (userInfoContainer) userInfoContainer.classList.remove("d-none");
-
-    // 📥 Cargar TODOS los datos del usuario desde Firestore
-    await cargarDatos();
-    await cargarObjetivosAhorro();
-    await cargarPresupuestos(); // 👈 NUEVO: presupuestos también viven en Firestore, por usuario
-  }
-});
-
-// 📥 CARGAR DATOS DESDE FIRESTORE
-async function cargarDatos() {
-  try {
-    const q = query(
-      collection(db, "transacciones"), 
-      where("userId", "==", currentUser.uid)
-    );
-    const querySnapshot = await getDocs(q);
-    
-    transactions = []; // Guardamos directamente en 'transactions'
-    querySnapshot.forEach((docSnapshot) => {
-      const data = docSnapshot.data();
-      transactions.push({
-        id: docSnapshot.id,
-        description: data.descripcion || data.description || '',
-        amount: parseFloat(data.monto || data.amount || 0),
-        type: data.tipo || data.type || 'expense', // "income" | "expense" | "ahorro" | "retiro_ahorro"
-        category: data.categoria || data.category || 'Otros',
-        currency: data.moneda || data.currency || 'ARS',
-        date: data.fecha ? data.fecha.split('T')[0] : new Date().toISOString().split('T')[0]
-      });
-    });
-
-    updateUI(); 
-  } catch (error) {
-    console.error("Error al cargar movimientos:", error);
-  }
+function loadLocalData(key, fallback) {
+    try {
+        const savedData = localStorage.getItem(key);
+        return savedData ? JSON.parse(savedData) : fallback;
+    } catch (error) {
+        console.warn(`No se pudieron leer los datos locales de ${key}.`, error);
+        return fallback;
+    }
 }
 
-// 📤 GUARDAR MOVIMIENTO EN FIRESTORE
-async function agregarMovimiento(description, amount, type, category, currency, date) {
-  if (!currentUser) {
-    console.error("No hay usuario autenticado.");
-    return;
-  }
-
-  try {
-    // Inserta directamente en la colección "transacciones" de Firestore
-    await addDoc(collection(db, "transacciones"), {
-      userId: currentUser.uid,
-      descripcion: description,
-      monto: parseFloat(amount),
-      tipo: type,
-      categoria: category,
-      moneda: currency || 'ARS',
-      fecha: date || new Date().toISOString()
-    });
-
-    // Vuelve a leer Firestore para sincronizar el estado global
-    await cargarDatos();
-
-    // 🔔 NUEVO: Si es un gasto, verificar si superó o se acerca al presupuesto
-    if (type === 'expense') {
-        const filteredTransactions = getFilteredTransactions();
-        verificarPresupuesto(category, filteredTransactions);
-    }
-
-  } catch (error) {
-    console.error("Error al guardar en Firestore:", error);
-  }
+function saveLocalData(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
 }
 
 // --- ESTADO Y VARIABLES GLOBALES ---
-let transactions = []; // Unificado a "transactions"
+let transactions = loadLocalData(STORAGE_KEYS.transactions, []);
 let currentCurrency = localStorage.getItem('currentCurrency') || 'ARS';
 
-// Los presupuestos ahora se guardan en Firestore (colección "presupuestos", 1 doc por usuario).
-// Este objeto es solo el valor por defecto mientras se cargan los datos reales del usuario.
-let budgets = {
+const defaultBudgets = {
     "Alquiler": 0,
     "Supermercado": 0,
     "Carniceria": 0,
@@ -137,7 +38,7 @@ let budgets = {
     "Ahorro": 0,
     "Otros": 0
 };
-let budgetsDocId = null; // id del documento en Firestore para saber si hay que crear o actualizar
+let budgets = { ...defaultBudgets, ...loadLocalData(STORAGE_KEYS.budgets, {}) };
 
 let myChart = null;
 
@@ -202,7 +103,12 @@ if (dateInput && !dateInput.value) {
 
 function init() {
     initChart();
+    renderSavingsGoals();
     updateUI();
+}
+
+function getCurrentCurrencyGoals() {
+    return savingsGoals.filter(goal => !goal.currency || goal.currency === currentCurrency);
 }
 
 // --- OBTENER TRANSACCIONES FILTRADAS ---
@@ -262,7 +168,7 @@ function updateUI() {
     }, 0);
 
     // Total de dinero ya asignado a objetivos activos
-    const totalInGoals = savingsGoals.reduce((acc, g) => acc + (g.currentAmount || 0), 0);
+    const totalInGoals = getCurrentCurrencyGoals().reduce((acc, g) => acc + (g.currentAmount || 0), 0);
 
     // Ahorro libre que te queda para repartir
     const freeSavings = Math.max(0, totalSavingsTransactions - totalInGoals);
@@ -282,6 +188,7 @@ function updateUI() {
     renderGroupedList(filteredTransactions);
     updateChart(filteredTransactions);
     renderBudgets(filteredTransactions);
+    renderSavingsGoals();
 }
 
 // --- RENDERIZAR BARRAS DE PRESUPUESTO ---
@@ -394,82 +301,19 @@ if (setBudgetBtn) {
             budgets = formValues;
             updateUI();
 
-            try {
-                await guardarPresupuestos(budgets);
-
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: 'Presupuestos actualizados',
-                    showConfirmButton: false,
-                    timer: 2000,
-                    background: '#1e293b',
-                    color: '#f8fafc'
-                });
-            } catch (error) {
-                console.error("Error al guardar presupuestos:", error);
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'error',
-                    title: 'No se pudo guardar en la nube',
-                    showConfirmButton: false,
-                    timer: 2500,
-                    background: '#1e293b',
-                    color: '#f8fafc'
-                });
-            }
+            saveLocalData(STORAGE_KEYS.budgets, budgets);
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Presupuestos actualizados',
+                showConfirmButton: false,
+                timer: 2000,
+                background: '#1e293b',
+                color: '#f8fafc'
+            });
         }
     });
-}
-
-// --- CARGAR PRESUPUESTOS DESDE FIRESTORE ---
-async function cargarPresupuestos() {
-    if (!currentUser) return;
-
-    try {
-        const q = query(
-            collection(db, "presupuestos"),
-            where("userId", "==", currentUser.uid)
-        );
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            // Ya existe un documento de presupuestos para este usuario: lo usamos
-            const docSnap = querySnapshot.docs[0];
-            budgetsDocId = docSnap.id;
-            const data = docSnap.data();
-            // Combinamos con los valores por defecto por si se agregó una categoría nueva luego
-            budgets = { ...budgets, ...(data.limites || {}) };
-        } else {
-            // Primera vez que este usuario configura presupuestos: no hay doc todavía
-            budgetsDocId = null;
-        }
-
-        updateUI();
-    } catch (error) {
-        console.error("Error al cargar presupuestos:", error);
-    }
-}
-
-// --- GUARDAR (CREAR O ACTUALIZAR) PRESUPUESTOS EN FIRESTORE ---
-async function guardarPresupuestos(nuevosLimites) {
-    if (!currentUser) return;
-
-    if (budgetsDocId) {
-        // Ya existe un doc para este usuario: lo actualizamos
-        await updateDoc(doc(db, "presupuestos", budgetsDocId), {
-            limites: nuevosLimites
-        });
-    } else {
-        // Primer guardado: creamos el documento
-        const nuevoDoc = await addDoc(collection(db, "presupuestos"), {
-            userId: currentUser.uid,
-            limites: nuevosLimites
-        });
-        budgetsDocId = nuevoDoc.id;
-    }
 }
 
 // --- RENDERIZAR LISTA AGRUPADA POR FECHA ---
@@ -579,8 +423,22 @@ function escapeHTML(str) {
 
 // --- MANEJO DEL FORMULARIO ---
 
+function agregarMovimiento(description, amount, type, category, currency, date) {
+    transactions.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        description,
+        amount,
+        type,
+        category,
+        currency,
+        date
+    });
+    saveLocalData(STORAGE_KEYS.transactions, transactions);
+    updateUI();
+}
+
 if (formEl) {
-  formEl.addEventListener('submit', async (e) => {
+  formEl.addEventListener('submit', (e) => {
     e.preventDefault();
 
     const description = descriptionInput.value.trim();
@@ -588,12 +446,11 @@ if (formEl) {
     const type = typeInput.value;
     const category = categoryInput.value;
     const date = dateInput.value || new Date().toISOString().split('T')[0];
-    const currency = currentCurrency || 'ARS';
+    const currency = currencyInput.value || currentCurrency;
 
     if (!description || isNaN(amount) || amount <= 0) return;
 
-    // 👇 LLAMADA A FIRESTORE OBLIGATORIA
-    await agregarMovimiento(description, amount, type, category, currency, date);
+    agregarMovimiento(description, amount, type, category, currency, date);
 
     // Limpiar campos
     descriptionInput.value = '';
@@ -614,18 +471,11 @@ window.removeTransaction = function(id) {
         cancelButtonColor: '#64748b',
         confirmButtonText: 'Sí, eliminar',
         cancelButtonText: 'Cancelar'
-    }).then(async (result) => {
+    }).then((result) => {
         if (result.isConfirmed) {
-            try {
-                // 1. Borrar de Firestore en la nube
-                await deleteDoc(doc(db, "transacciones", id));
-                
-                // 2. Recargar datos de la nube para actualizar la interfaz
-                await cargarDatos();
-            } catch (error) {
-                console.error("Error al eliminar de Firestore:", error);
-                Swal.fire('Error', 'No se pudo eliminar el movimiento', 'error');
-            }
+            transactions = transactions.filter(transaction => transaction.id !== id);
+            saveLocalData(STORAGE_KEYS.transactions, transactions);
+            updateUI();
         }
     });
 };
@@ -695,11 +545,16 @@ function exportToExcel() {
 
     const excelData = dataToExport.map(t => ({
         "Fecha": t.date,
-        "Tipo": t.type === 'income' ? 'Ingreso' : 'Gasto',
+        "Tipo": ({
+            income: 'Ingreso',
+            expense: 'Gasto',
+            ahorro: 'Ahorro',
+            retiro_ahorro: 'Retiro de ahorro'
+        })[t.type] || t.type,
         "Descripción": t.description,
         "Categoría": t.category,
         "Moneda": t.currency || 'ARS',
-        "Monto": t.type === 'expense' ? -t.amount : t.amount
+        "Monto": ['expense', 'retiro_ahorro'].includes(t.type) ? -t.amount : t.amount
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -755,6 +610,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 4. Escuchar el evento de clic en el botón
+    if (!btnThemeToggle || !themeIcon) return;
+
     btnThemeToggle.addEventListener('click', () => {
         // Verificamos el estado actual
         const currentTheme = htmlElement.getAttribute('data-theme');
@@ -767,72 +624,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// 🚪 CERRAR SESIÓN
-btnLogout.addEventListener("click", async () => {
-  const result = await Swal.fire({
-    title: "¿Cerrar sesión?",
-    text: "Vas a salir de tu cuenta personal.",
-    icon: "question",
-    showCancelButton: true,
-    confirmButtonColor: "#212529",
-    cancelButtonColor: "#6c757d",
-    confirmButtonText: "Sí, salir",
-    cancelButtonText: "Cancelar"
-  });
-
-  if (result.isConfirmed) {
-    try {
-      await signOut(auth);
-      window.location.href = "login.html";
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-      Swal.fire("Error", "No se pudo cerrar la sesión.", "error");
-    }
-  }
-});
-
 // ==========================================
 // 🎯 GESTIÓN DE OBJETIVOS DE AHORRO
 // ==========================================
 
-let savingsGoals = [];
+let savingsGoals = loadLocalData(STORAGE_KEYS.savingsGoals, []);
 const savingsListEl = document.getElementById('savings-list');
 const addSavingsGoalBtn = document.getElementById('add-savings-goal-btn');
 
-// 1. CARGAR OBJETIVOS DESDE FIRESTORE
-async function cargarObjetivosAhorro() {
-    if (!currentUser || !savingsListEl) return;
-
-    try {
-        const q = query(
-            collection(db, "objetivos_ahorro"),
-            where("userId", "==", currentUser.uid)
-        );
-        const querySnapshot = await getDocs(q);
-
-        savingsGoals = [];
-        querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            savingsGoals.push({
-                id: docSnap.id,
-                title: data.title || 'Objetivo',
-                targetAmount: parseFloat(data.targetAmount || 0),
-                currentAmount: parseFloat(data.currentAmount || 0)
-            });
-        });
-
-        renderSavingsGoals();
-    } catch (error) {
-        console.error("Error al cargar objetivos de ahorro:", error);
-    }
-}
-
-// 2. RENDERIZAR OBJETIVOS EN EL DOM
+// Renderizar objetivos guardados localmente.
 function renderSavingsGoals() {
     if (!savingsListEl) return;
     savingsListEl.innerHTML = '';
 
-    if (savingsGoals.length === 0) {
+    const currentGoals = getCurrentCurrencyGoals();
+
+    if (currentGoals.length === 0) {
         savingsListEl.innerHTML = `
             <p style="color: #94a3b8; font-size: 0.9rem; text-align: center; padding: 1rem 0;">
                 No tienes objetivos activos. ¡Crea el primero!
@@ -843,7 +650,7 @@ function renderSavingsGoals() {
 
     const symbol = currencySymbols[currentCurrency] || '$';
 
-    savingsGoals.forEach(goal => {
+    currentGoals.forEach(goal => {
         const percentage = goal.targetAmount > 0 
             ? Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100))
             : 0;
@@ -856,7 +663,7 @@ function renderSavingsGoals() {
             <div class="savings-info">
                 <div class="savings-title">
                     <i class="fa-solid ${isCompleted ? 'fa-circle-check' : 'fa-bullseye'}" style="color: ${isCompleted ? '#10b981' : '#38bdf8'};"></i>
-                    <span>${goal.title}</span>
+                    <span>${escapeHTML(goal.title)}</span>
                 </div>
                 <span class="savings-amount">${symbol}${formatNumber(goal.currentAmount)} / ${symbol}${formatNumber(goal.targetAmount)}</span>
             </div>
@@ -911,18 +718,14 @@ if (addSavingsGoalBtn) {
         });
 
         if (formValues) {
-            try {
-                await addDoc(collection(db, "objetivos_ahorro"), {
-                    userId: currentUser.uid,
-                    title: formValues.title,
-                    targetAmount: formValues.targetAmount,
-                    currentAmount: formValues.currentAmount,
-                    createdAt: new Date().toISOString()
-                });
-                await cargarObjetivosAhorro();
-            } catch (error) {
-                console.error("Error al guardar objetivo:", error);
-            }
+            savingsGoals.push({
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                currency: currentCurrency,
+                ...formValues
+            });
+            saveLocalData(STORAGE_KEYS.savingsGoals, savingsGoals);
+            renderSavingsGoals();
+            updateUI();
         }
     });
 }
@@ -933,12 +736,14 @@ window.abonarObjetivo = async function(id) {
     if (!goal) return;
 
     // 1. Calcular cuánto ahorro libre hay actualmente
-    const totalSavingsTransactions = transactions.reduce((acc, t) => {
+    const totalSavingsTransactions = transactions
+        .filter(transaction => transaction.currency === currentCurrency)
+        .reduce((acc, t) => {
         if (t.type === 'ahorro' || t.type === 'savings') return acc + t.amount;
         if (t.type === 'retiro_ahorro' || t.type === 'withdraw_savings') return acc - t.amount;
         return acc;
     }, 0);
-    const totalInGoals = savingsGoals.reduce((acc, g) => acc + (g.currentAmount || 0), 0);
+    const totalInGoals = getCurrentCurrencyGoals().reduce((acc, g) => acc + (g.currentAmount || 0), 0);
     const freeSavings = Math.max(0, totalSavingsTransactions - totalInGoals);
     const symbol = currencySymbols[currentCurrency] || '$';
 
@@ -979,17 +784,10 @@ window.abonarObjetivo = async function(id) {
     });
 
     if (montoSumar) {
-        try {
-            const nuevoTotal = goal.currentAmount + parseFloat(montoSumar);
-            const docRef = doc(db, "objetivos_ahorro", id);
-            await updateDoc(docRef, { currentAmount: nuevoTotal });
-            
-            // Recargar datos y refrescar la interfaz
-            await cargarObjetivosAhorro();
-            updateUI(); 
-        } catch (error) {
-            console.error("Error al actualizar objetivo:", error);
-        }
+        goal.currentAmount += parseFloat(montoSumar);
+        saveLocalData(STORAGE_KEYS.savingsGoals, savingsGoals);
+        renderSavingsGoals();
+        updateUI();
     }
 };
 
@@ -1009,53 +807,16 @@ window.eliminarObjetivo = async function(id) {
     });
 
     if (confirm.isConfirmed) {
-        try {
-            await deleteDoc(doc(db, "objetivos_ahorro", id));
-            await cargarObjetivosAhorro();
-        } catch (error) {
-            console.error("Error al eliminar objetivo:", error);
-        }
+        savingsGoals = savingsGoals.filter(goal => goal.id !== id);
+        saveLocalData(STORAGE_KEYS.savingsGoals, savingsGoals);
+        renderSavingsGoals();
+        updateUI();
     }
 };
 
-// --- VERIFICAR Y ALERTAR LÍMITES DE PRESUPUESTO ---
-function verificarPresupuesto(categoria, filteredTransactions) {
-    const limit = budgets[categoria] || 0;
-    if (limit <= 0) return; // Si no hay límite configurado, no hace nada
-
-    // Sumar todos los gastos de esa categoría en las transacciones filtradas actuales
-    const spent = filteredTransactions
-        .filter(t => t.type === 'expense' && t.category === categoria)
-        .reduce((acc, t) => acc + t.amount, 0);
-
-    const symbol = currencySymbols[currentCurrency] || '$';
-
-    if (spent > limit) {
-        Swal.fire({
-            icon: 'error',
-            title: '¡Presupuesto superado! 🚨',
-            text: `Has superado el límite para "${categoria}". Gastado: ${symbol}${formatNumber(spent)} de ${symbol}${formatNumber(limit)}`,
-            background: '#1e293b',
-            color: '#f8fafc',
-            confirmButtonColor: '#ef4444'
-        });
-    } else if (spent >= limit * 0.8) {
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'warning',
-            title: `Cuidado: Te estás acercando al límite en "${categoria}" (${Math.round((spent/limit)*100)}%)`,
-            showConfirmButton: false,
-            timer: 4000,
-            background: '#1e293b',
-            color: '#f8fafc'
-        });
-    }
-}
-
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
+    navigator.serviceWorker.register('./service-worker.js')
       .then(() => console.log('Service Worker registrado correctamente'))
       .catch((err) => console.log('Error al registrar Service Worker:', err));
   });
